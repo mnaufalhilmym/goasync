@@ -50,9 +50,9 @@ func Spawn[T any](fn func(context.Context) (T, error)) JoinHandle[T] {
 		res, err := fn(ctx)
 		cancel()
 		if err != nil {
-			result = goresult.NewErr[T](err)
+			result = goresult.Err[T](err)
 		} else {
-			result = goresult.NewOk(res)
+			result = goresult.Ok(res)
 		}
 		doneCh <- 1
 		close(doneCh)
@@ -77,9 +77,9 @@ func TryJoin[T any](ctx context.Context, handles ...JoinHandle[T]) ([]T, error) 
 			res, err := handles[idx].Await(ctx)
 			if err != nil {
 				errCh <- err
-				return
+			} else {
+				resultsCh <- []any{idx, res}
 			}
-			resultsCh <- []any{idx, res}
 		}()
 	}
 

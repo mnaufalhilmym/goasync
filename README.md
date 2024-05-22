@@ -32,6 +32,36 @@ if err != nil { // false
 fmt.Println(result) // print: [1 2-dua 3.3]
 ```
 
+- Aborting asynchronous task
+
+```go
+import (
+    "context"
+    "fmt"
+    "time"
+
+    "github.com/mnaufalhilmym/goasync"
+)
+
+task := goasync.Spawn(func(ctx context.Context) ([]any, error) {
+    select {
+    case <-ctx.Done():
+        return nil, ctx.Err()
+    case <-time.After(2 * time.Second):
+        return []any{1, "2-dua", 3.3}, nil
+    }
+})
+
+task.Abort() // Aborting async task
+
+result, err := task.Await(context.Background()) // Immediately return the result
+if err != nil { // true
+    fmt.Println(err) // print: context canceled
+}
+
+fmt.Println(result) // print: []
+```
+
 - Waiting for many asynchronous tasks
 
 ```go
