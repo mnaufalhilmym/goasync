@@ -291,7 +291,7 @@ func TestTryJoin(t *testing.T) {
 		return true, nil
 	}
 
-	tasks := make([]*goasync.JoinHandle[bool], 10)
+	tasks := make([]goasync.JoinHandle[bool], 10)
 	for i := range tasks {
 		tasks[i] = goasync.Spawn(fn)
 	}
@@ -324,7 +324,7 @@ func TestMultipleTryJoinInGoroutine(t *testing.T) {
 		return true, nil
 	}
 
-	tasks := make([]*goasync.JoinHandle[bool], 10)
+	tasks := make([]goasync.JoinHandle[bool], 10)
 	for i := range tasks {
 		tasks[i] = goasync.Spawn(fn)
 	}
@@ -365,7 +365,7 @@ func TestTryJoinWithTimeoutCtx(t *testing.T) {
 		return true, nil
 	}
 
-	tasks := make([]*goasync.JoinHandle[bool], 10)
+	tasks := make([]goasync.JoinHandle[bool], 10)
 	for i := range tasks {
 		tasks[i] = goasync.Spawn(fn)
 	}
@@ -403,7 +403,7 @@ func TestTryJoinWithErrorTask(t *testing.T) {
 		return false, errors.New("dummy error")
 	}
 
-	tasks := make([]*goasync.JoinHandle[bool], 10)
+	tasks := make([]goasync.JoinHandle[bool], 10)
 	for i := range tasks {
 		if i == 5 {
 			tasks[i] = goasync.Spawn(fnError)

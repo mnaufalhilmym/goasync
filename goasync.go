@@ -2,18 +2,14 @@ package goasync
 
 import (
 	"context"
-	"sync"
 
 	"github.com/mnaufalhilmym/goresult"
 )
 
 type JoinHandle[T any] struct {
-	sync.Mutex
-	fn         func(context.Context) (T, error)
-	resultCh   chan goresult.Result[T]
-	result     goresult.Result[T]
-	isFinished *bool
-	cancel     context.CancelFunc
+	doneCh chan byte
+	result *goresult.Result[T]
+	cancel context.CancelFunc
 }
 
 func (h *JoinHandle[T]) Abort() {
@@ -22,25 +18,18 @@ func (h *JoinHandle[T]) Abort() {
 
 func (h *JoinHandle[T]) Await(ctx context.Context) (T, error) {
 	for {
-		if h.result != nil {
-			if h.result.IsOk() {
-				return h.result.Unwrap(), nil
+		if *h.result != nil {
+			if (*h.result).IsOk() {
+				return (*h.result).Unwrap(), nil
 			} else {
 				var empty T
-				return empty, h.result.UnwrapErr()
+				return empty, (*h.result).UnwrapErr()
 			}
 		}
 
 		select {
-		case result, ok := <-h.resultCh:
-			if !ok && h.result == nil {
-				continue
-			}
-			if ok {
-				h.Lock()
-				h.result = result
-				h.Unlock()
-			}
+		case <-h.doneCh:
+			continue
 		case <-ctx.Done():
 			var empty T
 			return empty, ctx.Err()
@@ -49,35 +38,34 @@ func (h *JoinHandle[T]) Await(ctx context.Context) (T, error) {
 }
 
 func (h *JoinHandle[T]) IsFinished() bool {
-	return *h.isFinished
+	return (*h.result) != nil
 }
 
-func Spawn[T any](fn func(context.Context) (T, error)) *JoinHandle[T] {
+func Spawn[T any](fn func(context.Context) (T, error)) JoinHandle[T] {
 	ctx, cancel := context.WithCancel(context.Background())
-	resultCh := make(chan goresult.Result[T], 1)
-	isFinished := false
+	doneCh := make(chan byte, 1)
+	var result goresult.Result[T]
 
 	go func() {
 		res, err := fn(ctx)
 		cancel()
 		if err != nil {
-			resultCh <- goresult.NewErr[T](err)
+			result = goresult.NewErr[T](err)
 		} else {
-			resultCh <- goresult.NewOk(res)
+			result = goresult.NewOk(res)
 		}
-		close(resultCh)
-		isFinished = true
+		doneCh <- 1
+		close(doneCh)
 	}()
 
-	return &JoinHandle[T]{
-		fn:         fn,
-		resultCh:   resultCh,
-		isFinished: &isFinished,
-		cancel:     cancel,
+	return JoinHandle[T]{
+		doneCh: doneCh,
+		result: &result,
+		cancel: cancel,
 	}
 }
 
-func TryJoin[T any](ctx context.Context, handles ...*JoinHandle[T]) ([]T, error) {
+func TryJoin[T any](ctx context.Context, handles ...JoinHandle[T]) ([]T, error) {
 	countHandles := len(handles)
 
 	resultsCh := make(chan []any, countHandles)
