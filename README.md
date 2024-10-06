@@ -1,10 +1,21 @@
 # goasync
 
-Thread-safe asynchronous library for Go
+Thread-safe asynchronous library for Go. Also includes Worker to limit the number of goroutines, if needed.
 
-## Usage
+## Usage Examples
 
-- Using asynchronous task
+### Shortcut
+
+- [Using asynchronous task](#using-asynchronous-task)
+- [Aborting asynchronous task](#aborting-asynchronous-task)
+- [Waiting for many asynchronous tasks](#waiting-for-many-asynchronous-tasks)
+- [Await asynchronous tasks with timeout](#await-asynchronous-tasks-with-timeout)
+- [Limit the number of goroutines using worker (untyped)](#limit-the-number-of-goroutines-using-worker-untyped)
+- [Limit the number of goroutines using worker (typed)](#limit-the-number-of-goroutines-using-worker-typed)
+
+---
+
+### Using asynchronous task
 
 ```go
 import (
@@ -32,7 +43,7 @@ if err != nil { // false
 fmt.Println(result) // Print: true
 ```
 
-- Aborting asynchronous task
+### Aborting asynchronous task
 
 ```go
 import (
@@ -62,7 +73,7 @@ if err != nil { // true
 fmt.Println(result) // Print: []
 ```
 
-- Waiting for many asynchronous tasks
+### Waiting for many asynchronous tasks
 
 ```go
 import (
@@ -96,7 +107,7 @@ for _, result := range results {
 }
 ```
 
-- Await asynchronous tasks with timeout
+### Await asynchronous tasks with timeout
 
 ```go
 import (
@@ -130,7 +141,7 @@ if err != nil { // true
 fmt.Println(results) // Print: []
 ```
 
-- Limit the number of goroutines
+### Limit the number of goroutines using worker (untyped)
 
 ```go
 import (
@@ -141,16 +152,16 @@ import (
 )
 
 worker := goasync.
-    NewWorker().
+    NewWorkerBuilder().
     SetMaxWorkers(3). // Limit to a maximum of three goroutines
     Build()
 
-fn := func(context.Context) (any, error) {
+fn := func(context.Context) (any, error) { // Return any instead of typed result (example below)
     time.Sleep(1 * time.Second)
     return true, nil
 }
 
-tasks := make([]goasync.JoinHandle[any], 6)
+tasks := make([]goasync.JoinHandle[any], 6) // Return any instead of typed result (example below)
 for i := 0; i < len(tasks); i++ {
     tasks[i] = worker.Spawn(fn) // Will block execution when all workers are used. If there are workers available, it will unblock
 }
@@ -160,9 +171,45 @@ for _, task := range tasks {
     if err != nil {
         fmt.Println(err) // Never executed
     }
-    fmt.Println(result) // Print: true
+    fmt.Println(res) // Print: true
+}
+```
+
+### Limit the number of goroutines using worker (typed)
+
+```go
+import (
+	"context"
+	"time"
+
+	"github.com/mnaufalhilmym/goasync"
+)
+
+worker := goasync.
+    NewWorkerBuilder().
+    SetMaxWorkers(3). // Limit to a maximum of three goroutines
+    Build()
+
+typedWorker := goasync.TypedWorker[bool](worker)
+
+fn := func(context.Context) (bool, error) { // Return bool instead of any (example above)
+    time.Sleep(1 * time.Second)
+    return true, nil
+}
+
+tasks := make([]goasync.JoinHandle[bool], 6) // Return bool instead of any (example above)
+for i := 0; i < len(tasks); i++ {
+    tasks[i] = typedWorker.Spawn(fn) // Will block execution when all workers are used. If there are workers available, it will unblock
+}
+
+for _, task := range tasks {
+    res, err := task.Await(context.Background()) // Wait for the task to complete
+    if err != nil {
+        fmt.Println(err) // Never executed
+    }
+    fmt.Println(res) // Print: true
 }
 ```
 
 > [!TIP]
-> Further usage methods can be seen in the *_test.go files.
+> Further usage methods can be seen in the \*\_test.go files.

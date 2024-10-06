@@ -11,10 +11,10 @@ type WorkerBuilder struct {
 	maxWorkers uint
 }
 
-// `NewWorker` creates a new `WorkerBuilder` instance with the default
+// `NewWorkerBuilder` creates a new `WorkerBuilder` instance with the default
 // maximum number of workers set to the number of available CPU
 // cores.
-func NewWorker() *WorkerBuilder {
+func NewWorkerBuilder() *WorkerBuilder {
 	return &WorkerBuilder{
 		maxWorkers: uint(runtime.NumCPU()),
 	}
@@ -39,6 +39,21 @@ type Worker struct {
 	semaphore chan struct{}
 }
 
+// `Spawn` is equivalent to `TypedWorker[any](w).Spawn(fn)`.
+func (w *Worker) Spawn(fn func(context.Context) (any, error)) JoinHandle[any] {
+	return TypedWorker[any](w).Spawn(fn)
+}
+
+// `TypedWorker` creates a type-safe worker for spawning tasks that return
+// results of type T.
+func TypedWorker[T any](w *Worker) *WorkerTyped[T] {
+	return &WorkerTyped[T]{w}
+}
+
+type WorkerTyped[T any] struct {
+	w *Worker
+}
+
 // Spawns a new asynchronous task, returning a
 // `JoinHandle[T any]` for it.
 //
@@ -58,26 +73,26 @@ type Worker struct {
 // There is no guarantee that a spawned task will execute to completion.
 // When a runtime is shutdown, all outstanding tasks are dropped,
 // regardless of the lifecycle of that task.
-func (w *Worker) Spawn(fn func(context.Context) (any, error)) JoinHandle[any] {
-	w.semaphore <- struct{}{}
+func (wt *WorkerTyped[T]) Spawn(fn func(context.Context) (T, error)) JoinHandle[T] {
+	wt.w.semaphore <- struct{}{}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	doneCh := make(chan struct{}, 1)
-	var result goresult.Result[any]
+	var result goresult.Result[T]
 
 	go func() {
 		res, err := fn(ctx)
 		cancel()
 		if err != nil {
-			result = goresult.Err[any](err)
+			result = goresult.Err[T](err)
 		} else {
 			result = goresult.Ok(res)
 		}
 		close(doneCh)
-		<-w.semaphore
+		<-wt.w.semaphore
 	}()
 
-	return JoinHandle[any]{
+	return JoinHandle[T]{
 		doneCh: doneCh,
 		result: &result,
 		cancel: cancel,
