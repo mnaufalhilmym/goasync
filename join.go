@@ -37,11 +37,12 @@ func (h JoinHandle[T]) Await(ctx context.Context) (T, error) {
 		}
 
 		select {
-		case <-h.doneCh:
-			continue
 		case <-ctx.Done():
+			h.cancel()
 			var empty T
 			return empty, ctx.Err()
+		case <-h.doneCh:
+			continue
 		}
 	}
 }
