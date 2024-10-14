@@ -26,24 +26,19 @@ func (h JoinHandle[T]) Abort() {
 // `.Await`ing a future will suspend the current function's execution
 // until the executor has run the future to completion.
 func (h JoinHandle[T]) Await(ctx context.Context) (T, error) {
-	for {
-		if *h.result != nil {
-			if (*h.result).IsOk() {
-				return (*h.result).Unwrap(), nil
-			} else {
-				var empty T
-				return empty, (*h.result).UnwrapErr()
-			}
-		}
+	select {
+	case <-ctx.Done():
+		h.cancel()
+		var empty T
+		return empty, ctx.Err()
+	case <-h.doneCh:
+	}
 
-		select {
-		case <-ctx.Done():
-			h.cancel()
-			var empty T
-			return empty, ctx.Err()
-		case <-h.doneCh:
-			continue
-		}
+	if (*h.result).IsOk() {
+		return (*h.result).Unwrap(), nil
+	} else {
+		var empty T
+		return empty, (*h.result).UnwrapErr()
 	}
 }
 

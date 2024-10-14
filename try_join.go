@@ -29,21 +29,18 @@ func TryJoin[T any](ctx context.Context, handles ...JoinHandle[T]) ([]T, error) 
 
 	for range handles {
 		select {
-		case result := <-resultsCh:
-			res, ok := result[1].(T)
-			if ok {
-				results[result[0].(int)] = res
-			}
-		case err := <-errCh:
-			for _, handle := range handles {
-				handle.cancel()
-			}
-			return nil, err
 		case <-ctx.Done():
 			for _, handle := range handles {
 				handle.cancel()
 			}
 			return nil, ctx.Err()
+		case err := <-errCh:
+			for _, handle := range handles {
+				handle.cancel()
+			}
+			return nil, err
+		case result := <-resultsCh:
+			results[result[0].(int)] = result[1].(T)
 		}
 	}
 
