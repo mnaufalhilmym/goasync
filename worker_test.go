@@ -13,10 +13,11 @@ func TestWorker(t *testing.T) {
 
 	start := time.Now()
 
-	worker := goasync.
-		NewWorkerBuilder().
-		SetMaxWorkers(3).
-		Build()
+	worker := goasync.NewWorker(
+		goasync.WorkerConfig{
+			MaxWorkers: 3,
+		},
+	)
 
 	fn := func(context.Context) (any, error) {
 		time.Sleep(1 * time.Second)

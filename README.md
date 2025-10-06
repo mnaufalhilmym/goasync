@@ -151,10 +151,11 @@ import (
 	"github.com/mnaufalhilmym/goasync"
 )
 
-worker := goasync.
-    NewWorkerBuilder().
-    SetMaxWorkers(3). // Limit to a maximum of three goroutines
-    Build()
+worker := goasync.NewWorker(
+    goasync.WorkerConfig{
+        MaxWorkers: 3, // Limit to a maximum of three goroutines
+    },
+)
 
 fn := func(context.Context) (any, error) { // Return any instead of typed result (example below)
     time.Sleep(1 * time.Second)
@@ -185,10 +186,11 @@ import (
 	"github.com/mnaufalhilmym/goasync"
 )
 
-worker := goasync.
-    NewWorkerBuilder().
-    SetMaxWorkers(3). // Limit to a maximum of three goroutines
-    Build()
+worker := goasync.NewWorker(
+    goasync.WorkerConfig{
+        MaxWorkers: 3, // Limit to a maximum of three goroutines
+    },
+)
 
 typedWorker := goasync.TypedWorker[bool](worker)
 

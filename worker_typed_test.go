@@ -13,10 +13,11 @@ func TestTypedWorker(t *testing.T) {
 
 	start := time.Now()
 
-	worker := goasync.
-		NewWorkerBuilder().
-		SetMaxWorkers(3).
-		Build()
+	worker := goasync.NewWorker(
+		goasync.WorkerConfig{
+			MaxWorkers: 3,
+		},
+	)
 
 	workerBool := goasync.TypedWorker[bool](worker)
 	workerInt := goasync.TypedWorker[int](worker)
